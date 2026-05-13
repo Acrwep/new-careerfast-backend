@@ -597,21 +597,21 @@ const JobsModel = {
 
       // job nature filter
       if (filters.job_nature) {
-        whereClauses.push(`job_nature = ?`);
+        whereClauses.push(`LOWER(job_nature) = LOWER(?)`);
         queryParams.push(filters.job_nature);
       }
 
       // experience type filter
       if (filters.experience_type) {
-        whereClauses.push(`experience_type = ?`);
+        whereClauses.push(`LOWER(experience_type) = LOWER(?)`);
         queryParams.push(filters.experience_type);
       }
 
       // Company filter
       if (filters.companies && filters.companies.length > 0) {
-        const placeholders = filters.companies.map(() => "?").join(",");
-        whereClauses.push(`company_name IN (${placeholders})`);
-        queryParams.push(...filters.companies);
+        const placeholders = filters.companies.map(() => "LOWER(?)").join(",");
+        whereClauses.push(`LOWER(company_name) IN (${placeholders})`);
+        queryParams.push(...filters.companies.map(c => c.toLowerCase()));
       }
 
       // Workplace location filter
@@ -626,12 +626,12 @@ const JobsModel = {
         if (workLocations.length > 0) {
           whereClauses.push(`(
             ${workLocations
-              .map(() => `JSON_CONTAINS(IF(JSON_VALID(work_location), work_location, '[]'), ?)`)
+              .map(() => `JSON_SEARCH(LOWER(IF(JSON_VALID(work_location), work_location, '[]')), 'one', ?) IS NOT NULL`)
               .join(" OR ")}
           )`);
 
           workLocations.forEach((loc) => {
-            queryParams.push(JSON.stringify(loc));
+            queryParams.push(loc.toLowerCase());
           });
         }
       }
@@ -662,20 +662,20 @@ const JobsModel = {
         if (validCategories.length > 0) {
           whereClauses.push(`(
             ${validCategories
-              .map(() => `JSON_CONTAINS(IF(JSON_VALID(job_category), job_category, '[]'), ?)`)
+              .map(() => `JSON_SEARCH(LOWER(IF(JSON_VALID(job_category), job_category, '[]')), 'one', ?) IS NOT NULL`)
               .join(" OR ")}
           )`);
 
           validCategories.forEach((category) => {
-            queryParams.push(JSON.stringify(category));
+            queryParams.push(category.toLowerCase());
           });
         }
       }
 
       // Search term filter (searches in job_title and company_name)
       if (filters.searchTerm) {
-        const searchTerm = `%${filters.searchTerm}%`;
-        whereClauses.push(`(job_title LIKE ? OR company_name LIKE ?)`);
+        const searchTerm = `%${filters.searchTerm.toLowerCase()}%`;
+        whereClauses.push(`(LOWER(job_title) LIKE ? OR LOWER(company_name) LIKE ?)`);
         queryParams.push(searchTerm, searchTerm);
       }
 
@@ -1280,9 +1280,40 @@ const JobsModel = {
     }
   },
 
-  searchByKeyword: async (searchTerm) => {
+  searchByKeyword: async (searchTerm, category) => {
     try {
+      if (category === "Courses") {
+        let sql = "SELECT id, title as job_title, description as job_description, image as company_logo, 'Course' as job_nature, slug FROM courses";
+        let params = [];
+
+        if (searchTerm) {
+          sql += " WHERE LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(category) LIKE ?";
+          const term = `%${searchTerm.toLowerCase()}%`;
+          params = [term, term, term];
+        }
+
+        const [rows] = await pool.query(sql, params);
+        return rows.map(row => ({
+          ...row,
+          company_name: "CareerFast Academy", // Default for courses if not specified
+          id: row.id,
+          job_title: row.job_title,
+          company_logo: row.company_logo,
+          job_nature: "Course",
+          slug: row.slug
+        }));
+      }
+
       const filters = [];
+      // Category filter for Jobs/Internships
+      if (category && category !== "All") {
+        if (category === "Internships") {
+          filters.push(`LOWER(job_nature) = 'internship'`);
+        } else if (category === "Jobs") {
+          filters.push(`LOWER(job_nature) = 'job'`);
+        }
+      }
+
       // Keyword filter
       if (searchTerm) {
         const words = searchTerm

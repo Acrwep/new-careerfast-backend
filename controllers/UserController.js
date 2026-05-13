@@ -40,7 +40,7 @@ const createUser = async (request, response) => {
     !password ||
     !role_id
   ) {
-    response.status(400).json({
+    return response.status(400).json({
       message: "Missing required fields",
       required: [
         "first_name",

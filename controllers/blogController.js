@@ -51,7 +51,21 @@ exports.addBlog = async (req, res) => {
 exports.updateBlog = async (req, res) => {
     try {
         const blogId = req.params.id;
-        const { blogTitle, overview, blogImage, author, readingTime, blogDescription } = req.body;
+        const { blogTitle, overview, blogImage, author, readingTime, blogDescription, userId } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized: No User ID provided" });
+        }
+
+        // Check if the blog belongs to the user
+        const [existing] = await pool.execute("SELECT userId FROM blogs WHERE id = ?", [blogId]);
+        if (existing.length === 0) {
+            return res.status(404).json({ message: "Blog not found" });
+        }
+
+        if (Number(existing[0].userId) !== Number(userId)) {
+            return res.status(403).json({ message: "Forbidden: You are not the author of this blog" });
+        }
 
         const sql = `
   UPDATE blogs SET 
@@ -129,7 +143,23 @@ exports.getBlogById = async (req, res) => {
 exports.deleteBlog = async (req, res) => {
     try {
         const { id } = req.params;
-        console.log(`🗑 Request to delete blog ID: ${id}`);
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized: No User ID provided" });
+        }
+
+        // Check if the blog belongs to the user
+        const [existing] = await pool.execute("SELECT userId FROM blogs WHERE id = ?", [id]);
+        if (existing.length === 0) {
+            return res.status(404).json({ message: "Blog not found" });
+        }
+
+        if (Number(existing[0].userId) !== Number(userId)) {
+            return res.status(403).json({ message: "Forbidden: You are not the author of this blog" });
+        }
+
+        console.log(`🗑 Request to delete blog ID: ${id} by user: ${userId}`);
         
         const sql = `DELETE FROM blogs WHERE id = ?`;
         const [result] = await pool.execute(sql, [id]);

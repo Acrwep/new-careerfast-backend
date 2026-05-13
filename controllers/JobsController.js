@@ -992,16 +992,16 @@ const updateJobBasicDetails = async (request, response) => {
 };
 
 const searchByKeyword = async (request, response) => {
-  const { searchTerm } = request.query;
+  const { searchTerm, category } = request.query;
   try {
-    const result = await JobsModel.searchByKeyword(searchTerm);
+    const result = await JobsModel.searchByKeyword(searchTerm, category);
     response.status(200).send({
-      message: "Job posts fetched successfully",
+      message: "Search results fetched successfully",
       data: result,
     });
   } catch (error) {
     response.status(500).json({
-      message: "Error while fetching job posts",
+      message: "Error while fetching search results",
       details: error.message,
     });
   }

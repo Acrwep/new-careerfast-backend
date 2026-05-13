@@ -17,12 +17,21 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"], // Frontend URL
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+
+
+// Request Logger
+/* app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+}); */
+
+
 
 // =======================
 // 📁 Ensure Upload Directory Exists
@@ -50,6 +59,12 @@ app.get("/", (req, res) => {
   res.status(200).send({ message: "✅ CareerFast backend running fine!" });
 });
 
+app.get("/ping", (req, res) => {
+  console.log("Ping received");
+  res.status(200).send("pong");
+});
+
+
 // =======================
 // ❌ 404 Handler
 // =======================
@@ -61,7 +76,8 @@ app.use((req, res) => {
 // =======================
 // 🚀 Start Server
 // =======================
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`⚡ Server running at http://localhost:${PORT}`);
+const PORT = 3006;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`⚡ Server running at http://0.0.0.0:${PORT}`);
 });
+

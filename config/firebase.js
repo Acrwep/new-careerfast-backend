@@ -1,61 +1,94 @@
 const admin = require("firebase-admin");
-let serviceAccount;
+const path = require("path");
+const fs = require("fs");
+
+let isFirebaseEnabled = false;
 
 try {
-  serviceAccount = require("./firebaseServiceAccount.json");
+  const serviceAccountPath = path.join(__dirname, "firebaseServiceAccount.json");
   
-  if (serviceAccount.private_key) {
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+    
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+    }
+
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+    }
+    
+    isFirebaseEnabled = true;
+    console.log("✅ Firebase Admin Initialized");
   } else {
-    console.error("❌ Firebase Service Account Error: private_key is missing!");
+    console.warn("⚠️ Firebase Service Account file not found. Firebase features will be disabled.");
   }
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-
-  // Wrap messaging to handle potential credential errors during runtime
-  const originalMessaging = admin.messaging;
-  admin.messaging = function() {
-    const msging = originalMessaging.apply(this, arguments);
-    return {
-      send: async (msg) => {
-        try { return await msging.send(msg); }
-        catch (err) {
-          console.error("⚠️ Firebase send() error:", err.message);
-          return null;
-        }
-      },
-      subscribeToTopic: async (token, topic) => {
-        try { return await msging.subscribeToTopic(token, topic); }
-        catch (err) {
-          console.error(`⚠️ Firebase subscribeToTopic(${topic}) error:`, err.message);
-          return { success: false, message: err.message };
-        }
-      },
-      unsubscribeFromTopic: async (token, topic) => {
-        try { return await msging.unsubscribeFromTopic(token, topic); }
-        catch (err) {
-          console.error(`⚠️ Firebase unsubscribeFromTopic(${topic}) error:`, err.message);
-          return { success: false, message: err.message };
-        }
-      }
-    };
-  };
-
-  console.log("✅ Firebase Admin Initialized");
 } catch (error) {
-  console.warn("⚠️ Firebase Service Account Not Found or Invalid. Firebase features will be disabled.");
-  console.warn("Error details:", error.message);
-
-  // Mock messaging and other used features to prevent server crashes
-  if (!admin.apps.length || !admin.messaging) {
-    admin.messaging = () => ({
-      send: async () => { console.warn("⚠️ Firebase disabled"); return null; },
-      subscribeToTopic: async () => { console.warn("⚠️ Firebase disabled"); return { success: false }; },
-      unsubscribeFromTopic: async () => { console.warn("⚠️ Firebase disabled"); return { success: false }; }
-    });
-  }
+  console.error("❌ Firebase Initialization Error:", error.message);
 }
 
+// Global variable to cache the wrapped messaging instance
+let wrappedMessagingInstance = null;
+
+// Override admin.messaging to return our wrapped version
+const originalMessagingFn = admin.messaging;
+admin.messaging = function() {
+  if (wrappedMessagingInstance) return wrappedMessagingInstance;
+
+  let msging = null;
+  if (isFirebaseEnabled && typeof originalMessagingFn === "function") {
+    try {
+      msging = originalMessagingFn.apply(admin, arguments);
+    } catch (err) {
+      console.error("❌ FCM: Failed to initialize messaging instance:", err.message);
+      isFirebaseEnabled = false; // Disable it if it fails to even get the instance
+    }
+  }
+
+  wrappedMessagingInstance = {
+    send: async (msg) => {
+      if (!isFirebaseEnabled || !msging) {
+        console.warn("⚠️ FCM: send() skipped (Firebase disabled)");
+        return null;
+      }
+      try {
+        return await msging.send(msg);
+      } catch (err) {
+        console.error("⚠️ FCM: send() error:", err.message);
+        return null;
+      }
+    },
+    subscribeToTopic: async (token, topic) => {
+      if (!isFirebaseEnabled || !msging) {
+        console.warn("⚠️ FCM: subscribeToTopic() skipped (Firebase disabled)");
+        return { success: false, message: "Firebase disabled" };
+      }
+      try {
+        return await msging.subscribeToTopic(token, topic);
+      } catch (err) {
+        console.error(`⚠️ FCM: subscribeToTopic(${topic}) error:`, err.message);
+        return { success: false, message: err.message };
+      }
+    },
+    unsubscribeFromTopic: async (token, topic) => {
+      if (!isFirebaseEnabled || !msging) {
+        console.warn("⚠️ FCM: unsubscribeFromTopic() skipped (Firebase disabled)");
+        return { success: false, message: "Firebase disabled" };
+      }
+      try {
+        return await msging.unsubscribeFromTopic(token, topic);
+      } catch (err) {
+        console.error(`⚠️ FCM: unsubscribeFromTopic(${topic}) error:`, err.message);
+        return { success: false, message: err.message };
+      }
+    }
+  };
+
+  return wrappedMessagingInstance;
+};
+
 module.exports = admin;
+
+
