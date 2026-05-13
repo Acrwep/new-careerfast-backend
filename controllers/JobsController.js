@@ -205,10 +205,16 @@ const jobPosting = async (request, response) => {
     openings,
     working_days,
     questions,
+    salary_duration,
   } = request.body;
 
   // 🧹 Clean the openings field
   openings = openings && !isNaN(openings) ? parseInt(openings, 10) : null;
+
+  // 🖼️ Handle Next.js image objects for company_logo
+  if (company_logo && typeof company_logo === "object") {
+    company_logo = company_logo.src || (company_logo.default && company_logo.default.src) || JSON.stringify(company_logo);
+  }
 
   const formattedDuration = Array.isArray(duration_period)
     ? duration_period
@@ -251,12 +257,13 @@ const jobPosting = async (request, response) => {
       seo_description,
       openings,
       working_days,
-      formatQuestions
+      formatQuestions,
+      salary_duration
     );
 
     // ✅ Send Push Notification to All Users
     // Note: Firebase notification icon must be a URL, not base64
-    const notificationIcon = (company_logo && !company_logo.startsWith('data:'))
+    const notificationIcon = (company_logo && typeof company_logo === 'string' && !company_logo.startsWith('data:'))
       ? company_logo
       : "/favicon.png";
 
@@ -415,7 +422,7 @@ const getSkills = async (request, response) => {
 
 const getJobCategories = async (request, response) => {
   try {
-    const categories = await JobsModel.getJobCategories();
+    const categories = await JobsModel.getJobCategories(request.query);
     response.status(200).send({
       message: "Job categories fetched successfully",
       data: categories,
@@ -457,6 +464,7 @@ const getJobPosts = async (request, response) => {
       data: posts,
     });
   } catch (error) {
+    console.error("❌ Error in getJobPosts:", error);
     response.status(500).send({
       message: "Error fetching job posts",
       details: error.message,
@@ -889,6 +897,7 @@ const updateEligibility = async (request, response) => {
     max_salary,
     diversity_hiring,
     currency_code,
+    salary_duration,
   } = request.body;
   const formattedExpReq = Array.isArray(experience_required)
     ? experience_required
@@ -901,11 +910,11 @@ const updateEligibility = async (request, response) => {
       job_post_id,
       experience_type,
       formattedExpReq,
-      salary_type,
       min_salary,
       max_salary,
       formattedDiversity,
-      currency_code
+      currency_code,
+      salary_duration
     );
     response.status(200).send({
       message: "Job updated successfully",
@@ -968,6 +977,12 @@ const updateJobBasicDetails = async (request, response) => {
     ? job_categories
     : [job_categories];
   const formattedSkills = Array.isArray(skills) ? skills : [skills];
+
+  // 🖼️ Handle Next.js image objects for company_logo
+  if (company_logo && typeof company_logo === "object") {
+    company_logo = company_logo.src || (company_logo.default && company_logo.default.src) || JSON.stringify(company_logo);
+  }
+
   try {
     const result = await JobsModel.updateJobBasicDetails(
       job_post_id,

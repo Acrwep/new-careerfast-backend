@@ -176,7 +176,8 @@ const JobsModel = {
     seo_description,
     openings,
     working_days,
-    questions
+    questions,
+    salary_duration
   ) => {
     try {
       const query = `
@@ -202,8 +203,9 @@ const JobsModel = {
         job_description,
         seo_description,
         openings,
-        working_days
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        working_days,
+        salary_duration
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -228,7 +230,8 @@ const JobsModel = {
         job_description,
         seo_description,
         openings,
-        working_days
+        working_days,
+        salary_duration
         // ❌ removed created_at completely (MySQL will auto-fill)
       ];
 
@@ -524,11 +527,41 @@ const JobsModel = {
     }
   },
 
-  getJobCategories: async () => {
+  getJobCategories: async (filters = {}) => {
     try {
-      const [categories] = await pool.query(
-        `SELECT id, category_name FROM job_categories WHERE is_active = 1 ORDER BY CASE WHEN category_name = 'Others' THEN 1 ELSE 0 END, category_name`
-      );
+      let query;
+      let values = [];
+
+      if (Object.keys(filters).length > 0) {
+        let whereClauses = ["c.is_active = 1"];
+        
+        if (filters.job_nature) {
+          whereClauses.push("j.job_nature = ?");
+          values.push(filters.job_nature);
+        }
+        
+        if (filters.experience_type) {
+          whereClauses.push("j.experience_type = ?");
+          values.push(filters.experience_type);
+        }
+
+        query = `
+          SELECT DISTINCT c.id, c.category_name 
+          FROM job_categories c
+          JOIN job_post j ON JSON_CONTAINS(j.job_category, JSON_QUOTE(c.category_name))
+          WHERE ${whereClauses.join(" AND ")}
+          ORDER BY CASE WHEN c.category_name = 'Others' THEN 1 ELSE 0 END, c.category_name
+        `;
+      } else {
+        query = `
+          SELECT id, category_name 
+          FROM job_categories 
+          WHERE is_active = 1 
+          ORDER BY CASE WHEN category_name = 'Others' THEN 1 ELSE 0 END, category_name
+        `;
+      }
+
+      const [categories] = await pool.query(query, values);
       return categories;
     } catch (error) {
       throw new Error(error.message);
@@ -556,10 +589,9 @@ const JobsModel = {
                       max_salary,
                       diversity_hiring,
                       benefits,
-                      job_description,
-                      seo_description,
                       openings,
                       working_days,
+                      salary_duration,
                       created_at
                   FROM
                       job_post`;
@@ -1183,7 +1215,8 @@ const JobsModel = {
     min_salary,
     max_salary,
     diversity_hiring,
-    currency
+    currency,
+    salary_duration
   ) => {
     try {
       const [isIdExists] = await pool.query(
@@ -1194,7 +1227,7 @@ const JobsModel = {
         throw new Error("Invalid Id");
       }
       const [result] = await pool.query(
-        `UPDATE job_post SET experience_type = ?, experience_required = ?, salary_type = ?, min_salary = ?, max_salary = ?, diversity_hiring = ?, currency = ? WHERE id = ?`,
+        `UPDATE job_post SET experience_type = ?, experience_required = ?, salary_type = ?, min_salary = ?, max_salary = ?, diversity_hiring = ?, currency = ?, salary_duration = ? WHERE id = ?`,
         [
           experience_type,
           JSON.stringify(experience_required),
@@ -1203,6 +1236,7 @@ const JobsModel = {
           max_salary,
           JSON.stringify(diversity_hiring),
           currency,
+          salary_duration,
           job_post_id,
         ]
       );
@@ -1363,9 +1397,9 @@ const JobsModel = {
                         max_salary,
                         diversity_hiring,
                         benefits,
-                        job_description,
                         openings,
                         working_days,
+                        salary_duration,
                         created_at,
                         CASE WHEN is_closed = 1 THEN 1 ELSE 0 END AS is_closed
                     FROM
