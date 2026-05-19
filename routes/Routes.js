@@ -193,6 +193,7 @@ router.get("/getAppliedCandidatesCount", verifyToken, JobsController.getAppliedC
 router.get("/getHomePageStats", JobsController.getHomePageStats);
 router.get("/getTrendingSearches", JobsController.getTrendingSearches);
 router.get("/getUniqueCompanies", JobsController.getUniqueCompanies);
+router.get("/superadmin/dashboard-stats", verifyToken, JobsController.getSuperAdminDashboardData);
 router.get("/StatsOfPost", verifyToken, JobsController.StatsOfPost);
 router.get("/getLocations", JobsController.getLocations);
 router.get(

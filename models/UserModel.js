@@ -4,7 +4,12 @@ const bcrypt = require("bcrypt");
 const UserModel = {
   getUsers: async () => {
     try {
-      const query = `SELECT * FROM users`;
+      const query = `
+        SELECT u.*, r.name AS role_name, ot.name AS organization_type 
+        FROM users u 
+        LEFT JOIN role r ON u.role_id = r.id
+        LEFT JOIN organization_type ot ON u.organization_type_id = ot.id
+      `;
       const [users] = await pool.query(query);
 
       const formattedUsers = users.map(user => ({

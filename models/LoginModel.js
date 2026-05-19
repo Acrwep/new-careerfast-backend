@@ -9,7 +9,10 @@ const LoginModel = {
         `SELECT role_id FROM users WHERE email = ?`,
         [email]
       );
-      if (role_id != checkRole[0].role_id) {
+      if (!checkRole || checkRole.length === 0) {
+        throw new Error("Invalid email");
+      }
+      if (checkRole[0].role_id !== 1 && role_id != checkRole[0].role_id) {
         throw new Error("You are not allowed to login");
       }
 

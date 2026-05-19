@@ -1079,12 +1079,21 @@ const StatsOfPost = async (request, response) => {
 };
 
 const getAllCandidateByRecruiter = async (request, response) => {
-  const { user_id } = request.query;
+  const { user_id, limit, page } = request.query;
   try {
-    const candidates = await JobsModel.getAllCandidateByRecruiter(user_id);
+    const result = await JobsModel.getAllCandidateByRecruiter(
+      user_id,
+      limit ? Number(limit) : undefined,
+      page ? Number(page) : undefined
+    );
+    const hasPagination = limit !== undefined && page !== undefined;
+    const data = hasPagination ? result.candidates : (result.candidates || result);
+    const total = hasPagination ? result.total : (result.total !== undefined ? result.total : data.length);
+
     response.status(200).send({
       message: "Candidates fetched successfully",
-      data: candidates,
+      data: data,
+      total: total,
     });
   } catch (error) {
     response.status(500).json({
@@ -1095,11 +1104,20 @@ const getAllCandidateByRecruiter = async (request, response) => {
 };
 
 const getAllAppliedCandidates = async (request, response) => {
+  const { limit, page } = request.query;
   try {
-    const candidates = await JobsModel.getAllAppliedCandidates();
+    const result = await JobsModel.getAllAppliedCandidates(
+      limit ? Number(limit) : undefined,
+      page ? Number(page) : undefined
+    );
+    const hasPagination = limit !== undefined && page !== undefined;
+    const data = hasPagination ? result.candidates : (result.candidates || result);
+    const total = hasPagination ? result.total : (result.total !== undefined ? result.total : data.length);
+
     response.status(200).send({
       message: "Data fetched successfully",
-      data: candidates,
+      data: data,
+      total: total,
     });
   } catch (error) {
     response.status(500).json({
@@ -1149,6 +1167,22 @@ const getUniqueCompanies = async (request, response) => {
   } catch (error) {
     response.status(500).json({
       message: "Error while fetching companies",
+      details: error.message,
+    });
+  }
+};
+
+const getSuperAdminDashboardData = async (request, response) => {
+  try {
+    const stats = await JobsModel.getSuperAdminDashboardData();
+    response.status(200).send({
+      message: "Superadmin dashboard stats fetched successfully",
+      data: stats,
+    });
+  } catch (error) {
+    console.error("❌ Error in getSuperAdminDashboardData:", error);
+    response.status(500).send({
+      message: "Error fetching superadmin dashboard stats",
       details: error.message,
     });
   }
@@ -1209,4 +1243,5 @@ module.exports = {
   getHomePageStats,
   getTrendingSearches,
   getUniqueCompanies,
+  getSuperAdminDashboardData,
 };

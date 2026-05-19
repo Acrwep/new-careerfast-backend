@@ -417,10 +417,21 @@ const JobsModel = {
 
   getJobPostByUserId: async (user_id, limit, page, job_nature, search) => {
     try {
+      const [userRow] = await pool.query("SELECT role_id FROM users WHERE id = ?", [user_id]);
+      const role_id = userRow.length > 0 ? userRow[0].role_id : null;
+
       // Build WHERE clause based on filters
-      let whereClause = 'WHERE user_id = ?';
-      let countValues = [user_id];
-      let queryValues = [user_id];
+      let whereClause = '';
+      let countValues = [];
+      let queryValues = [];
+
+      if (role_id === 1) {
+        whereClause = 'WHERE 1=1';
+      } else {
+        whereClause = 'WHERE user_id = ?';
+        countValues.push(user_id);
+        queryValues.push(user_id);
+      }
 
       // Add job_nature filter if provided
       if (job_nature) {
@@ -589,6 +600,8 @@ const JobsModel = {
                       max_salary,
                       diversity_hiring,
                       benefits,
+                      job_description,
+                      seo_description,
                       openings,
                       working_days,
                       salary_duration,
@@ -1436,7 +1449,42 @@ const JobsModel = {
 
   getAppliedCandidatesCount: async (user_id) => {
     try {
-      const query = `SELECT
+      const [userRow] = await pool.query("SELECT role_id FROM users WHERE id = ?", [user_id]);
+      const role_id = userRow.length > 0 ? userRow[0].role_id : null;
+
+      let query, getGenderQuery, domainQuery;
+      let params = [];
+
+      if (role_id === 1) {
+        query = `SELECT
+                        COUNT(*) AS total_candidates
+                    FROM
+                        job_post AS j
+                    INNER JOIN applied_jobs AS aj ON        
+                      j.id = aj.postId`;
+
+        getGenderQuery = `SELECT
+                                  COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) AS male_count,
+                                  COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) AS female_count,
+                                  COUNT(CASE WHEN u.gender NOT IN ('Male', 'Female') OR u.gender IS NULL THEN 1 END) AS others_count
+                              FROM
+                                  job_post AS j
+                              INNER JOIN applied_jobs AS aj ON
+                                  j.id = aj.postId
+                              INNER JOIN users AS u ON
+                                  u.id = aj.userId;`;
+
+        domainQuery = `SELECT
+                              JSON_UNQUOTE(
+                                  JSON_EXTRACT(j.job_category, '$[0]')
+                              ) AS job_categories,
+                              IFNULL(COUNT(aj.userId), 0) AS candidates_count
+                          FROM
+                              job_post AS j
+                          INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                          GROUP BY job_categories`;
+      } else {
+        query = `SELECT
                         COUNT(*) AS total_candidates
                     FROM
                         job_post AS j
@@ -1444,8 +1492,8 @@ const JobsModel = {
                       j.id = aj.postId
                     WHERE
                         user_id = ?`;
-      const [candidatesCount] = await pool.query(query, [user_id]);
-      const getGenderQuery = `SELECT
+
+        getGenderQuery = `SELECT
                                   COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) AS male_count,
                                   COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) AS female_count,
                                   COUNT(CASE WHEN u.gender NOT IN ('Male', 'Female') OR u.gender IS NULL THEN 1 END) AS others_count
@@ -1457,9 +1505,8 @@ const JobsModel = {
                                   u.id = aj.userId
                               WHERE
                                   j.user_id = ?;`;
-      const [getGenderStats] = await pool.query(getGenderQuery, [user_id]);
 
-      const domainQuery = `SELECT
+        domainQuery = `SELECT
                               JSON_UNQUOTE(
                                   JSON_EXTRACT(j.job_category, '$[0]')
                               ) AS job_categories,
@@ -1469,7 +1516,13 @@ const JobsModel = {
                           INNER JOIN applied_jobs AS aj ON j.id = aj.postId
                           WHERE
                               j.user_id = ? GROUP BY job_categories`;
-      const [getDomainStats] = await pool.query(domainQuery, [user_id]);
+        params.push(user_id);
+      }
+
+      const [candidatesCount] = await pool.query(query, params);
+      const [getGenderStats] = await pool.query(getGenderQuery, params);
+      const [getDomainStats] = await pool.query(domainQuery, params);
+
       return {
         candidatesCount: candidatesCount[0].total_candidates,
         males: getGenderStats[0].male_count,
@@ -1484,31 +1537,57 @@ const JobsModel = {
 
   StatsOfPost: async (user_id, job_post_id) => {
     try {
-      const values = [user_id, job_post_id];
-      const getquery = `SELECT
-                        COUNT(*) AS total_candidates
-                    FROM
-                        job_post AS j
-                    INNER JOIN applied_jobs AS aj
-                    ON
-                        j.id = aj.postId
-                    WHERE
-                        j.user_id = ? AND j.id = ?`;
-      const [candidatesCount] = await pool.query(getquery, values);
+      const [userRow] = await pool.query("SELECT role_id FROM users WHERE id = ?", [user_id]);
+      const role_id = userRow.length > 0 ? userRow[0].role_id : null;
 
-      const getGenderQuery = `SELECT
-                                  COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) AS male_count,
-                                  COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) AS female_count,
-                                  COUNT(CASE WHEN u.gender NOT IN ('Male', 'Female') OR u.gender IS NULL THEN 1 END) AS others_count
-                              FROM
-                                  job_post AS j
-                              INNER JOIN applied_jobs AS aj ON
-                                  j.id = aj.postId
-                              INNER JOIN users AS u ON
-                                  u.id = aj.userId
-                              WHERE
-                                  j.user_id = ? AND j.id = ?;`;
+      let getquery, getGenderQuery;
+      let values = [];
+
+      if (role_id === 1) {
+        getquery = `SELECT
+                          COUNT(*) AS total_candidates
+                      FROM
+                          job_post AS j
+                      INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                      WHERE
+                          j.id = ?`;
+
+        getGenderQuery = `SELECT
+                                    COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) AS male_count,
+                                    COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) AS female_count,
+                                    COUNT(CASE WHEN u.gender NOT IN ('Male', 'Female') OR u.gender IS NULL THEN 1 END) AS others_count
+                                FROM
+                                    job_post AS j
+                                INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                                INNER JOIN users AS u ON u.id = aj.userId
+                                WHERE
+                                    j.id = ?;`;
+        values.push(job_post_id);
+      } else {
+        getquery = `SELECT
+                          COUNT(*) AS total_candidates
+                      FROM
+                          job_post AS j
+                      INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                      WHERE
+                          j.user_id = ? AND j.id = ?`;
+
+        getGenderQuery = `SELECT
+                                    COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) AS male_count,
+                                    COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) AS female_count,
+                                    COUNT(CASE WHEN u.gender NOT IN ('Male', 'Female') OR u.gender IS NULL THEN 1 END) AS others_count
+                                FROM
+                                    job_post AS j
+                                INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                                INNER JOIN users AS u ON u.id = aj.userId
+                                WHERE
+                                    j.user_id = ? AND j.id = ?;`;
+        values.push(user_id, job_post_id);
+      }
+
+      const [candidatesCount] = await pool.query(getquery, values);
       const [getGenderStats] = await pool.query(getGenderQuery, values);
+
       return {
         candidatesCount: candidatesCount[0].total_candidates,
         males: getGenderStats[0].male_count,
@@ -1520,9 +1599,22 @@ const JobsModel = {
     }
   },
 
-  getAllCandidateByRecruiter: async (user_id) => {
+  getAllCandidateByRecruiter: async (user_id, limit, page) => {
     try {
-      const getquery = `SELECT
+      const [userRow] = await pool.query("SELECT role_id FROM users WHERE id = ?", [user_id]);
+      const role_id = userRow.length > 0 ? userRow[0].role_id : null;
+
+      let getquery, countQuery;
+      let params = [];
+      let countParams = [];
+
+      if (role_id === 1) {
+        countQuery = `SELECT COUNT(*) AS total
+                      FROM job_post AS j
+                      INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                      INNER JOIN users AS u ON aj.userId = u.id`;
+        
+        getquery = `SELECT
                             u.id AS user_id,
                             u.first_name,
                             u.last_name,
@@ -1532,6 +1624,36 @@ const JobsModel = {
                             u.phone,
                             j.id AS job_post_id,
                             j.job_title,
+                            j.company_name,
+                            aj.id AS applied_jobs_id,
+                            aj.created_at
+                        FROM
+                            job_post AS j
+                        INNER JOIN applied_jobs AS aj ON
+                          j.id = aj.postId
+                        INNER JOIN users AS u ON
+                          aj.userId = u.id
+                        ORDER BY aj.created_at DESC`;
+      } else {
+        countQuery = `SELECT COUNT(*) AS total
+                      FROM job_post AS j
+                      INNER JOIN applied_jobs AS aj ON j.id = aj.postId
+                      INNER JOIN users AS u ON aj.userId = u.id
+                      WHERE j.user_id = ?`;
+        countParams.push(user_id);
+
+        getquery = `SELECT
+                            u.id AS user_id,
+                            u.first_name,
+                            u.last_name,
+                            u.email,
+                            u.phone_code,
+                            u.profile_image,
+                            u.phone,
+                            j.id AS job_post_id,
+                            j.job_title,
+                            j.company_name,
+                            aj.id AS applied_jobs_id,
                             aj.created_at
                         FROM
                             job_post AS j
@@ -1540,17 +1662,39 @@ const JobsModel = {
                         INNER JOIN users AS u ON
                           aj.userId = u.id
                         WHERE
-                            j.user_id = ? ORDER BY j.created_at ASC`;
-      const [candidates] = await pool.query(getquery, [user_id]);
-      return candidates;
+                            j.user_id = ? ORDER BY aj.created_at DESC`;
+        params.push(user_id);
+      }
+
+      const [countResult] = await pool.query(countQuery, countParams);
+      const total = countResult[0]?.total || 0;
+
+      if (limit && page) {
+        const offset = (page - 1) * limit;
+        getquery += ` LIMIT ? OFFSET ?`;
+        params.push(Number(limit), Number(offset));
+      }
+
+      const [candidates] = await pool.query(getquery, params);
+      return {
+        candidates,
+        total
+      };
     } catch (error) {
       throw new Error(error.message);
     }
   },
 
-  getAllAppliedCandidates: async () => {
+  getAllAppliedCandidates: async (limit, page) => {
     try {
-      const query = `
+      const countQuery = `SELECT COUNT(*) AS total
+                          FROM applied_jobs AS aj
+                          INNER JOIN job_post AS j ON j.id = aj.postId
+                          INNER JOIN users AS u ON u.id = aj.userId`;
+      const [countResult] = await pool.query(countQuery);
+      const total = countResult[0]?.total || 0;
+
+      let query = `
         SELECT
             u.id AS user_id,
             u.first_name,
@@ -1568,8 +1712,17 @@ const JobsModel = {
         INNER JOIN users AS u ON u.id = aj.userId
         ORDER BY aj.created_at DESC
       `;
-      const [candidates] = await pool.query(query);
-      return candidates;
+      let params = [];
+      if (limit && page) {
+        const offset = (page - 1) * limit;
+        query += ` LIMIT ? OFFSET ?`;
+        params.push(Number(limit), Number(offset));
+      }
+      const [candidates] = await pool.query(query, params);
+      return {
+        candidates,
+        total
+      };
     } catch (error) {
       throw new Error(error.message);
     }
@@ -1675,6 +1828,152 @@ const JobsModel = {
         "SELECT DISTINCT company_name FROM job_post WHERE company_name IS NOT NULL AND company_name != '' ORDER BY company_name"
       );
       return companies.map(c => c.company_name);
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  },
+
+  getSuperAdminDashboardData: async () => {
+    try {
+      // 1. Total Counts
+      const [candidatesCount] = await pool.query("SELECT COUNT(*) as total FROM users WHERE role_id = 2");
+      const [recruitersCount] = await pool.query("SELECT COUNT(*) as total FROM users WHERE role_id = 3");
+      const [jobsCount] = await pool.query("SELECT COUNT(*) as total FROM job_post");
+      const [applicationsCount] = await pool.query("SELECT COUNT(*) as total FROM applied_jobs");
+
+      // 2. Candidates List
+      const [candidatesList] = await pool.query(`
+        SELECT id, first_name, last_name, email, phone, location, created_date, is_active 
+        FROM users 
+        WHERE role_id = 2 
+        ORDER BY created_date DESC
+      `);
+
+      // 3. Recruiters List
+      const [recruitersList] = await pool.query(`
+        SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.organization, u.location, u.created_date, u.is_active,
+               (SELECT COUNT(*) FROM job_post jp WHERE jp.user_id = u.id) AS jobs_count
+        FROM users u
+        WHERE u.role_id = 3 
+        ORDER BY u.created_date DESC
+      `);
+
+      // 4. Jobs List
+      const [jobsList] = await pool.query(`
+        SELECT jp.id, jp.job_title, jp.company_name, jp.job_nature, jp.workplace_type, jp.openings, jp.created_at, jp.user_id,
+               CONCAT(u.first_name, ' ', u.last_name) AS recruiter_name, u.email AS recruiter_email
+        FROM job_post jp
+        LEFT JOIN users u ON jp.user_id = u.id
+        ORDER BY jp.created_at DESC
+      `);
+
+      // 5. Applications List
+      const [applicationsList] = await pool.query(`
+        SELECT 
+            aj.id AS applied_jobs_id,
+            aj.created_at,
+            u.first_name,
+            u.last_name,
+            u.email,
+            j.job_title,
+            j.company_name,
+            COALESCE(
+                (SELECT ash.status 
+                 FROM applied_job_status_history ash 
+                 WHERE ash.applied_job_id = aj.id 
+                 ORDER BY ash.changed_at DESC LIMIT 1), 
+                'Pending'
+            ) AS status
+        FROM applied_jobs aj
+        INNER JOIN job_post j ON aj.postId = j.id
+        INNER JOIN users u ON aj.userId = u.id
+        ORDER BY aj.created_at DESC
+      `);
+
+      // 6. Growth Timeline - candidates, recruiters, jobs, applications grouped by month
+      const [monthlyCandidates] = await pool.query(`
+        SELECT DATE_FORMAT(created_date, '%Y-%m') AS month, COUNT(*) AS count 
+        FROM users 
+        WHERE role_id = 2 AND created_date IS NOT NULL
+        GROUP BY month 
+        ORDER BY month ASC
+      `);
+
+      const [monthlyRecruiters] = await pool.query(`
+        SELECT DATE_FORMAT(created_date, '%Y-%m') AS month, COUNT(*) AS count 
+        FROM users 
+        WHERE role_id = 3 AND created_date IS NOT NULL
+        GROUP BY month 
+        ORDER BY month ASC
+      `);
+
+      const [monthlyJobs] = await pool.query(`
+        SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count 
+        FROM job_post 
+        WHERE created_at IS NOT NULL
+        GROUP BY month 
+        ORDER BY month ASC
+      `);
+
+      const [monthlyApplications] = await pool.query(`
+        SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count 
+        FROM applied_jobs 
+        WHERE created_at IS NOT NULL
+        GROUP BY month 
+        ORDER BY month ASC
+      `);
+
+      // 7. Workplace type distribution
+      const [workplaceStats] = await pool.query(`
+        SELECT workplace_type, COUNT(*) as count 
+        FROM job_post 
+        WHERE workplace_type IS NOT NULL AND workplace_type != ''
+        GROUP BY workplace_type
+      `);
+
+      // 8. Application status distribution
+      const [statusStats] = await pool.query(`
+        SELECT 
+            COALESCE(
+                (SELECT ash.status 
+                 FROM applied_job_status_history ash 
+                 WHERE ash.applied_job_id = aj.id 
+                 ORDER BY ash.changed_at DESC LIMIT 1), 
+                'Pending'
+            ) AS status,
+            COUNT(*) AS count
+        FROM applied_jobs aj
+        GROUP BY status
+      `);
+
+      // 9. Categories list from job_post to count category counts
+      const [categoriesData] = await pool.query("SELECT job_category FROM job_post WHERE job_category IS NOT NULL");
+
+      return {
+        counts: {
+          candidates: candidatesCount[0].total,
+          recruiters: recruitersCount[0].total,
+          jobs: jobsCount[0].total,
+          applications: applicationsCount[0].total,
+        },
+        lists: {
+          candidates: candidatesList,
+          recruiters: recruitersList,
+          jobs: jobsList,
+          applications: applicationsList,
+        },
+        monthlyData: {
+          candidates: monthlyCandidates,
+          recruiters: monthlyRecruiters,
+          jobs: monthlyJobs,
+          applications: monthlyApplications,
+        },
+        distributions: {
+          workplace: workplaceStats,
+          status: statusStats,
+          categories: categoriesData,
+        }
+      };
     } catch (error) {
       throw new Error(error.message);
     }
