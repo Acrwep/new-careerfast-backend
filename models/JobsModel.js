@@ -605,7 +605,8 @@ const JobsModel = {
                       openings,
                       working_days,
                       salary_duration,
-                      created_at
+                      created_at,
+                      (SELECT COUNT(*) FROM applied_jobs WHERE applied_jobs.postId = job_post.id) AS applicants_count
                   FROM
                       job_post`;
 
