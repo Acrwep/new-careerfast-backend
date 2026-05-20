@@ -910,6 +910,7 @@ const updateEligibility = async (request, response) => {
       job_post_id,
       experience_type,
       formattedExpReq,
+      salary_type,
       min_salary,
       max_salary,
       formattedDiversity,
