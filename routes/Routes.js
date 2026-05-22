@@ -100,6 +100,7 @@ router.get(
   JobsController.getJobPostByUserId
 );
 router.post("/getJobPosts", JobsController.getJobPosts);
+router.get("/job/logo/:id", JobsController.getCompanyLogo);
 router.put("/registrationClose", verifyToken, JobsController.registrationClose);
 
 // Job posting module end

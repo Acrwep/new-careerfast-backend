@@ -1189,7 +1189,39 @@ const getSuperAdminDashboardData = async (request, response) => {
   }
 };
 
+const getCompanyLogo = async (request, response) => {
+  try {
+    const { id } = request.params;
+    const [rows] = await pool.query(
+      "SELECT company_logo FROM job_post WHERE id = ?",
+      [id]
+    );
+    if (rows.length === 0 || !rows[0].company_logo) {
+      return response.status(404).send("Not Found");
+    }
+    const img = rows[0].company_logo;
+    if (img.startsWith("data:")) {
+      const matches = img.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.*)$/);
+      if (matches && matches.length === 3) {
+        const contentType = matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        response.setHeader('Content-Type', contentType);
+        response.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+        return response.send(buffer);
+      }
+    }
+    if (img.startsWith("http") || img.startsWith("/")) {
+      return response.redirect(img);
+    }
+    return response.status(400).send("Invalid logo format");
+  } catch (error) {
+    console.error("Error fetching company logo:", error);
+    return response.status(500).send("Internal server error");
+  }
+};
+
 module.exports = {
+  getCompanyLogo,
   insertJobNature,
   getJobNature,
   insertWorkPlaceType,

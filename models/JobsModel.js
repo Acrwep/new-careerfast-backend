@@ -485,6 +485,7 @@ const JobsModel = {
       const formatResult = result.map((item) => {
         return {
           ...item,
+          company_logo: `/api/job/logo/${item.id}`,
           date_posted: dayjs(item.created_at).local().from(now),
           duration_period: safeParse(item.duration_period),
           work_location: safeParse(item.work_location),
@@ -774,6 +775,7 @@ const JobsModel = {
 
           return {
             ...post,
+            company_logo: `/api/job/logo/${post.id}`,
             date_posted: dayjs(post.created_at).tz("Asia/Kolkata").from(now),
             duration_period: safeParseArray(post.duration_period),
             work_location: safeParseArray(post.work_location),
@@ -1303,17 +1305,22 @@ const JobsModel = {
   ) => {
     try {
       const [isIdExists] = await pool.query(
-        `SELECT id FROM job_post WHERE id = ?`,
+        `SELECT id, company_logo FROM job_post WHERE id = ?`,
         [job_post_id]
       );
       if (isIdExists.length <= 0) {
         throw new Error("Invalid Id");
       }
 
+      let finalLogo = company_logo;
+      if (company_logo && (company_logo.startsWith("/api/job/logo/") || company_logo.includes("/api/job/logo/"))) {
+        finalLogo = isIdExists[0].company_logo;
+      }
+
       const updateQuery = `UPDATE job_post SET company_name = ?, company_logo = ?, job_title = ?, job_category = ?, skills = ?, openings = ?, working_days = ? WHERE id = ?`;
       const values = [
         company_name,
-        company_logo,
+        finalLogo,
         job_title,
         JSON.stringify(job_categories),
         JSON.stringify(skills),

@@ -58,13 +58,18 @@ exports.updateBlog = async (req, res) => {
         }
 
         // Check if the blog belongs to the user
-        const [existing] = await pool.execute("SELECT userId FROM blogs WHERE id = ?", [blogId]);
+        const [existing] = await pool.execute("SELECT userId, blogImage FROM blogs WHERE id = ?", [blogId]);
         if (existing.length === 0) {
             return res.status(404).json({ message: "Blog not found" });
         }
 
         if (Number(existing[0].userId) !== Number(userId)) {
             return res.status(403).json({ message: "Forbidden: You are not the author of this blog" });
+        }
+
+        let finalImage = blogImage;
+        if (blogImage && (blogImage.startsWith("/api/blogs/image/") || blogImage.includes("/api/blogs/image/"))) {
+            finalImage = existing[0].blogImage;
         }
 
         const sql = `
@@ -82,7 +87,7 @@ exports.updateBlog = async (req, res) => {
         await pool.execute(sql, [
             blogTitle,
             overview,
-            blogImage,
+            finalImage,
             author,
             readingTime,
             blogDescription,
@@ -105,14 +110,49 @@ exports.updateBlog = async (req, res) => {
 // =============================
 exports.getBlogs = async (req, res) => {
     try {
-        const sql = `SELECT * FROM blogs ORDER BY createdDate DESC`;
+        const sql = `SELECT id, blogTitle, overview, author, readingTime, createdDate, updatedDate, userId FROM blogs ORDER BY createdDate DESC`;
         const [rows] = await pool.execute(sql);
 
-        return res.status(200).json(rows);
+        const mapped = rows.map(row => ({
+            ...row,
+            blogImage: `/api/blogs/image/${row.id}`
+        }));
+
+        return res.status(200).json(mapped);
 
     } catch (error) {
         console.error("Error fetching blogs:", error);
         return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// =============================
+// 📌 Get Blog Image
+// =============================
+exports.getBlogImage = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT blogImage FROM blogs WHERE id = ?", [req.params.id]);
+        if (rows.length === 0 || !rows[0].blogImage) {
+            return res.status(404).send("Not Found");
+        }
+        const img = rows[0].blogImage;
+        if (img.startsWith("data:")) {
+            const matches = img.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.*)$/);
+            if (matches && matches.length === 3) {
+                const contentType = matches[1];
+                const buffer = Buffer.from(matches[2], 'base64');
+                res.setHeader('Content-Type', contentType);
+                res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+                return res.send(buffer);
+            }
+        }
+        if (img.startsWith("http") || img.startsWith("/")) {
+            return res.redirect(img);
+        }
+        return res.status(400).send("Invalid image format");
+    } catch (error) {
+        console.error("Error fetching blog image:", error);
+        return res.status(500).send("Internal server error");
     }
 };
 

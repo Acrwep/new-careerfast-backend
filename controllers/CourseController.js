@@ -35,7 +35,8 @@ const addCourse = async (req, res) => {
 
 const getCourses = async (req, res) => {
     try {
-        const result = await CourseModel.getAll();
+        const limit = parseInt(req.query.limit, 10);
+        const result = await CourseModel.getAll(!isNaN(limit) && limit > 0 ? limit : null);
         if (result.success) {
             let courses = result.data.map(course => {
                 let parsedContent = null;
@@ -51,11 +52,6 @@ const getCourses = async (req, res) => {
                     content: parsedContent
                 };
             });
-
-            const limit = parseInt(req.query.limit, 10);
-            if (!isNaN(limit) && limit > 0) {
-                courses = courses.slice(0, limit);
-            }
 
             res.status(200).json(courses);
         } else {

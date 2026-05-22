@@ -16,9 +16,15 @@ const CourseModel = {
         }
     },
 
-    getAll: async () => {
+    getAll: async (limit) => {
         try {
-            const [rows] = await db.execute("SELECT * FROM courses ORDER BY id DESC");
+            let sql = "SELECT id, title, description, link, image, slug, category, created_at FROM courses ORDER BY id DESC";
+            const params = [];
+            if (limit && !isNaN(limit)) {
+                sql += " LIMIT ?";
+                params.push(limit);
+            }
+            const [rows] = await db.execute(sql, params);
             return { success: true, data: rows };
         } catch (error) {
             console.error("DB Error:", error);
