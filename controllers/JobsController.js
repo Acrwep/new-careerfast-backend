@@ -3,6 +3,7 @@ const JobsModel = require("../models/JobsModel");
 const { response, request } = require("express");
 const cities = require("cities");
 const admin = require("../config/firebase");
+const pool = require("../config/dbConfig");
 
 const insertJobNature = async (request, response) => {
   const { nature_name } = request.body;
