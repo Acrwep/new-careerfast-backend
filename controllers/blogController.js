@@ -115,7 +115,7 @@ exports.getBlogs = async (req, res) => {
 
         const mapped = rows.map(row => ({
             ...row,
-            blogImage: `/api/blogs/image/${row.id}`
+            blogImage: `/api/blogs/image/${row.id}?t=${row.updatedDate ? new Date(row.updatedDate).getTime() : ''}`
         }));
 
         return res.status(200).json(mapped);
