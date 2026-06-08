@@ -321,7 +321,7 @@ const rawCourses = [
             { icon: "FaComments", title: "Org. Behavior", desc: "Master conflict resolution and company culture." }
         ],
         curriculum: [
-            { title: "Module 1: Strategic HR", content: "Aligning HR goals with business strategy." },
+            { title: "Module 1: Strategic HR", content: "Strategic Human Resource Management involves aligning HR goals with the overall business strategy to drive organizational success. In this module, you will learn how to identify critical talent needs, develop comprehensive workforce planning strategies, and implement HR initiatives that directly support the company's long-term objectives. We will cover topics like competitive advantage through people, organizational structure, and leveraging HR analytics as a strategic decision-making tool." },
             { title: "Module 2: Recruitment & Sourcing", content: "Modern sourcing on LinkedIn and AI platforms." },
             { title: "Module 3: Training & Development", content: "Building effective learning programs." },
             { title: "Module 4: Compensation & Benefits", content: "Payroll, bonuses, and statutory compliance." },
@@ -403,9 +403,9 @@ async function seed() {
     for (const rawCourse of rawCourses) {
         try {
             const courseContent = generateCourseContent(rawCourse);
-            
+
             const [existing] = await db.execute("SELECT id FROM courses WHERE slug = ?", [rawCourse.slug]);
-            
+
             if (existing.length > 0) {
                 const sql = "UPDATE courses SET title=?, description=?, category=?, image=?, content=? WHERE slug=?";
                 const params = [
