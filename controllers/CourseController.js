@@ -11,7 +11,7 @@ const addCourse = async (req, res) => {
         const params = [
             title || null,
             description || null,
-            link || null,
+            link || "",
             imageBase64 || null,
             content ? JSON.stringify(content) : null,
             slug || null,
@@ -129,7 +129,7 @@ const updateCourse = async (req, res) => {
             id,
             title || null,
             description || null,
-            link || null,
+            link || "",
             finalImage || null,
             content ? JSON.stringify(content) : null,
             slug || null,

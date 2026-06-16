@@ -43,7 +43,10 @@ const subscribeToTopic = async (req, res) => {
     }
 
     try {
-        await admin.messaging().subscribeToTopic(token, "allUsers");
+        const result = await admin.messaging().subscribeToTopic(token, "allUsers");
+        if (result && result.success === false) {
+            return res.status(500).json(result);
+        }
         res.json({ success: true, message: "Subscribed to allUsers topic" });
     } catch (error) {
         console.error("Error subscribing to topic:", error);
