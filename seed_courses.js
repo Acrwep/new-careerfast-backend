@@ -97,34 +97,34 @@ const generateCourseContent = (course) => {
 
 const rawCourses = [
     {
-        title: "Full Stack Web Development",
-        description: "Master MERN stack and build real-world applications.",
+        title: "Master MERN Stack: Complete Full Stack Web Development Course [2026]",
+        description: "Learn full stack web development from scratch. Master MongoDB, Express.js, React, and Node.js to build and deploy real-world web applications.",
         slug: "full-stack-web-development",
         category: "Tech",
         image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085",
-        subtitle: "Master the MERN stack (MongoDB, Express, React, Node.js) and launch your career in web development.",
+        subtitle: "Become an expert full stack developer with our comprehensive MERN stack course. Learn to build scalable, high-performance web applications using MongoDB, Express, React, and Node.js.",
         discountedPrice: "4,999",
         originalPrice: "9,999",
         benefits: [
-            { icon: "FaLaptopCode", title: "Full Stack Mastery", desc: "Learn both frontend and backend development from scratch." },
-            { icon: "FaRocket", title: "Portfolio Projects", desc: "Build real-world apps like E-commerce and Social Networks." },
-            { icon: "FaUserTie", title: "Direct Interviews", desc: "Get priority access to our hiring partners upon completion." }
+            { icon: "FaLaptopCode", title: "MERN Stack Mastery", desc: "Deep dive into frontend and backend development with JavaScript." },
+            { icon: "FaRocket", title: "Real-World Projects", desc: "Build enterprise-level apps like E-commerce and Social Networks." },
+            { icon: "FaUserTie", title: "Career & Placement", desc: "Get interview preparation, resume building, and priority hiring access." }
         ],
         curriculum: [
-            { title: "Module 1: Modern HTML & CSS", content: "Master responsive design, Flexbox, Grid, and CSS animations." },
-            { title: "Module 2: JavaScript Mastery", content: "Deep dive into ES6+, Async/Await, Closures, and DOM manipulation." },
-            { title: "Module 3: Frontend with React", content: "Learn hooks, state management, routing, and component architecture." },
-            { title: "Module 4: Backend with Node & Express", content: "Build scalable REST APIs, authentication, and server-side logic." },
-            { title: "Module 5: Database with MongoDB", content: "Master NoSQL data modeling, aggregation, and performance tuning." },
-            { title: "Module 6: Deployment & CI/CD", content: "Learn to deploy apps on AWS, Heroku, and automated workflows." }
+            { title: "Module 1: HTML5, CSS3 & Responsive Web Design", content: "Master UI/UX fundamentals, CSS Grid, Flexbox, and modern web design principles." },
+            { title: "Module 2: Advanced JavaScript (ES6+)", content: "Deep dive into Async/Await, Promises, Closures, OOP, and DOM manipulation." },
+            { title: "Module 3: React.js Frontend Development", content: "Learn React Hooks, Redux state management, React Router, and Component Architecture." },
+            { title: "Module 4: Node.js & Express.js Backend API", content: "Build secure RESTful APIs, implement JWT authentication, and handle server logic." },
+            { title: "Module 5: MongoDB & NoSQL Databases", content: "Master Mongoose ODM, data modeling, aggregation framework, and database performance optimization." },
+            { title: "Module 6: Full Stack Deployment & DevOps", content: "Deploy MERN applications on AWS/Heroku, CI/CD pipelines, and web security best practices." }
         ],
         projects: [
-            { icon: "🛍️", title: "E-commerce Giant", desc: "A full-scale store with cart, payments, and admin dashboard." },
-            { icon: "🗨️", title: "Real-time Chat App", desc: "Using Socket.io for instant messaging and notifications." },
-            { icon: "🎬", title: "Movie Discovery Engine", desc: "Advanced search and filtering using third-party APIs." }
+            { icon: "🛍️", title: "Full-Stack E-commerce Platform", desc: "Build a scalable online store with React, Redux, Stripe payments, and Admin panel." },
+            { icon: "🗨️", title: "Real-time Social Chat App", desc: "Implement Socket.io for instant messaging, user authentication, and live notifications." },
+            { icon: "🎬", title: "Movie Search Engine", desc: "Integrate third-party APIs with React to create a dynamic movie discovery platform." }
         ],
-        before: ["Confusion with modern web tech", "Fragmented knowledge of coding", "Empty portfolio", "Difficulty clearing tech interviews"],
-        after: ["Expert in MERN stack development", "Structured, deep understanding", "Portfolio with 5+ premium apps", "Confident and job-ready"]
+        before: ["Confusion with modern JavaScript frameworks", "Struggling to connect frontend with backend", "Lack of real-world portfolio projects", "Difficulty clearing technical interviews"],
+        after: ["Expert in MERN stack development", "Ability to build complete web applications independently", "Portfolio with 5+ premium full stack apps", "Confident and job-ready for developer roles"]
     },
     {
         title: "Data Science & Machine Learning",
