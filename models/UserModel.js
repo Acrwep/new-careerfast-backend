@@ -145,14 +145,15 @@ const UserModel = {
     course,
     start_year,
     end_year,
-    gender
+    gender,
+    resume
   ) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
       // Update profile image
       const [personal] = await conn.query(
-        `UPDATE users SET profile_image = ?, is_email_verified = ?, user_type = ?, experince_type = ?, total_years = ?, total_months = ?, class = ?, course = ?, start_year = ?, end_year = ?, gender = ? WHERE id = ?`,
+        `UPDATE users SET profile_image = ?, is_email_verified = ?, user_type = ?, experince_type = ?, total_years = ?, total_months = ?, class = ?, course = ?, start_year = ?, end_year = ?, gender = ?, resume = ? WHERE id = ?`,
         [
           profile_image,
           (is_email_verified === "verified" || is_email_verified === "Verified") ? 1 : 0,  // ✅ convert to 1/0
@@ -165,6 +166,7 @@ const UserModel = {
           start_year,
           end_year,
           gender,
+          resume,
           user_id,
         ]
       );

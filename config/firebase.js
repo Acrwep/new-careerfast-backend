@@ -34,7 +34,7 @@ let wrappedMessagingInstance = null;
 
 // Override admin.messaging to return our wrapped version
 const originalMessagingFn = admin.messaging;
-admin.messaging = function() {
+const getWrappedMessaging = function() {
   if (wrappedMessagingInstance) return wrappedMessagingInstance;
 
   let msging = null;
@@ -89,6 +89,15 @@ admin.messaging = function() {
   return wrappedMessagingInstance;
 };
 
-module.exports = admin;
+const customAdmin = new Proxy(admin, {
+  get: function(target, prop) {
+    if (prop === 'messaging') {
+      return getWrappedMessaging;
+    }
+    return target[prop];
+  }
+});
+
+module.exports = customAdmin;
 
 

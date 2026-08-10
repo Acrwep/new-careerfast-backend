@@ -149,34 +149,28 @@ const insertProfile = async (request, response) => {
     start_year,
     end_year,
     gender,
+    resume,
   } = request.body;
 
-  if (
-    !profile_image ||
-    !user_id ||
-    !country ||
-    !state ||
-    !city ||
-    !pincode ||
-    !address ||
-    !user_type ||
-    !experince_type ||
-    !gender
-  ) {
+  console.log("Received profile data:", request.body);
+
+  const missingFields = [];
+  if (!profile_image) missingFields.push("profile_image");
+  if (user_id === undefined || user_id === null) missingFields.push("user_id");
+  if (!country) missingFields.push("country");
+  if (!state) missingFields.push("state");
+  if (!city) missingFields.push("city");
+  if (!pincode) missingFields.push("pincode");
+  if (!address) missingFields.push("address");
+  if (!user_type) missingFields.push("user_type");
+  if (!experince_type) missingFields.push("experince_type");
+  if (!gender) missingFields.push("gender");
+  if (!resume) missingFields.push("resume");
+
+  if (missingFields.length > 0) {
     return response.status(400).json({
       message: "Missing required fields",
-      required: [
-        "profile_image",
-        "user_id",
-        "country",
-        "state",
-        "city",
-        "pincode",
-        "address",
-        "user_type",
-        "experince_type",
-        "gender",
-      ],
+      required: missingFields,
     });
   }
   const formattedProfessional = Array.isArray(professional)
@@ -202,7 +196,8 @@ const insertProfile = async (request, response) => {
       course,
       start_year,
       end_year,
-      gender
+      gender,
+      resume
     );
 
     response.status(201).json({
